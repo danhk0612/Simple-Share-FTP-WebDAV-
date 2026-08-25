@@ -83,20 +83,31 @@ func main() {
 		}))
 		_ = actions.Add(walk.NewSeparatorAction())
 
-		_ = actions.Add(newAction(tr(cfg.Language, "firewall"), func() {
+		firewallMenu, _ := walk.NewMenu()
+		_ = firewallMenu.Actions().Add(newAction(tr(cfg.Language, "firewallCheck"), func() {
 			_ = ni.ShowInfo(tr(cfg.Language, "app"), tr(cfg.Language, "firewallChecking"))
 			allowed, err := firewallAllowed()
 			if err != nil { showErr(mw, cfg, err); return }
 			if allowed {
 				walk.MsgBox(mw, tr(cfg.Language, "app"), firewallOK(cfg.Language), walk.MsgBoxIconInformation)
-				return
-			}
-			if walk.MsgBox(mw, tr(cfg.Language, "app"), firewallAsk(cfg.Language), walk.MsgBoxYesNo|walk.MsgBoxIconQuestion) == walk.DlgCmdYes {
-				_ = ni.ShowInfo(tr(cfg.Language, "app"), tr(cfg.Language, "firewallAdding"))
-				if err := addFirewallRule(); err != nil { showErr(mw, cfg, err); return }
-				walk.MsgBox(mw, tr(cfg.Language, "app"), firewallAdded(cfg.Language), walk.MsgBoxIconInformation)
+			} else {
+				walk.MsgBox(mw, tr(cfg.Language, "app"), firewallNotAllowed(cfg.Language), walk.MsgBoxIconInformation)
 			}
 		}))
+		_ = firewallMenu.Actions().Add(newAction(tr(cfg.Language, "firewallAllow"), func() {
+			_ = ni.ShowInfo(tr(cfg.Language, "app"), tr(cfg.Language, "firewallAdding"))
+			if err := addFirewallRule(); err != nil { showErr(mw, cfg, err); return }
+			walk.MsgBox(mw, tr(cfg.Language, "app"), firewallAdded(cfg.Language), walk.MsgBoxIconInformation)
+		}))
+		_ = firewallMenu.Actions().Add(newAction(tr(cfg.Language, "firewallRemove"), func() {
+			_ = ni.ShowInfo(tr(cfg.Language, "app"), tr(cfg.Language, "firewallRemoving"))
+			if err := removeFirewallRule(); err != nil { showErr(mw, cfg, err); return }
+			walk.MsgBox(mw, tr(cfg.Language, "app"), firewallRemoved(cfg.Language), walk.MsgBoxIconInformation)
+		}))
+		firewallAction := walk.NewMenuAction(firewallMenu)
+		_ = firewallAction.SetText(tr(cfg.Language, "firewallManage"))
+		_ = actions.Add(firewallAction)
+
 		_ = actions.Add(newAction(tr(cfg.Language, "update"), func() { handleUpdate(mw, cfg) }))
 		_ = actions.Add(walk.NewSeparatorAction())
 
