@@ -1,6 +1,10 @@
 # Simple Share (FTP/WebDAV)
 
+[한국어](README.ko.md) | English
+
 Simple Share (FTP/WebDAV) is a lightweight Windows tray utility for sharing a local folder over FTP or WebDAV.
+
+Current stable release: **v1.0.0**
 
 ## Features
 
@@ -8,28 +12,72 @@ Simple Share (FTP/WebDAV) is a lightweight Windows tray utility for sharing a lo
 - Configurable listening port
 - Shared root folder selection on first run
 - Anonymous access or username/password authentication
-- Windows Firewall rule check and registration
+- Windows Firewall management from the tray menu
+  - Check current rule status
+  - Allow this application
+  - Remove the allow rule
 - System tray operation
-- Settings backup, restore, and reset
+- Start / stop server from the tray
+- Open the shared root folder from the tray
+- Settings management submenu
+  - Edit settings
+  - Back up settings
+  - Restore settings
+  - Reset settings
 - GitHub Releases update check
 - Korean (default) and English UI
 - Start with Windows toggle
-- Single executable distribution target
+- Single executable distribution for Windows x64
+
+## Download
+
+Download the latest Windows build from the GitHub Releases page:
+
+- `SimpleShare.exe`
+
+Release page: https://github.com/danhk0612/Simple-Share-FTP-WebDAV-/releases
 
 ## Quick start
 
-1. Download `SimpleShare.exe` from GitHub Releases or build it yourself.
-2. Run the executable.
-3. On first launch, choose FTP or WebDAV, the port, and the root folder to share.
-4. Configure anonymous access or a username/password.
-5. Use the tray menu to start/stop the server, open settings, check the firewall, back up settings, restore settings, or check for updates.
+1. Download and run `SimpleShare.exe`.
+2. On first launch, choose FTP or WebDAV, the listening port, and the root folder to share.
+3. Choose whether to allow anonymous access. If anonymous access is disabled, configure a username and password.
+4. The selected server starts after the initial configuration is saved.
+5. Use the tray icon for server control, firewall management, settings, language selection, update checks, and exit.
 
 ### Default ports
 
 - WebDAV: `8080`
 - FTP: `2121`
 
-> FTP uses additional data connections. Simple Share registers a Windows Firewall **program rule** rather than only opening the control port, so negotiated FTP data connections can use the same application permission.
+You can change the port in Settings.
+
+### FTP note
+
+FTP uses a control connection and additional data connections. Simple Share creates a Windows Firewall **program rule** for `SimpleShare.exe` instead of opening only one port, so FTP data connections created by the application can use the same permission.
+
+## Tray menu
+
+The tray menu includes:
+
+- Server status
+- Start / Stop server
+- Open root folder
+- Firewall management
+  - Check status
+  - Allow
+  - Remove allow rule
+- Check for updates
+- Settings management
+  - Settings
+  - Back up settings
+  - Restore settings
+  - Reset settings
+- Language
+  - Korean
+  - English
+- Start with Windows
+- Exit
 
 ## Configuration
 
@@ -39,7 +87,42 @@ Configuration is stored under the current user's roaming application data direct
 %APPDATA%\SimpleShareFTPWebDAV\config.json
 ```
 
-Settings backups are JSON files selected by the user. Backups can contain the configured password, so store backup files in a trusted location.
+The configuration includes the selected protocol, port, root folder, authentication settings, language, and startup preference.
+
+Settings backups are JSON files selected by the user. Backups can contain the configured password, so store them in a trusted location.
+
+## Authentication
+
+### FTP
+
+When anonymous access is disabled, FTP authentication uses the configured username and password.
+
+When anonymous access is enabled, the accepted anonymous usernames are:
+
+- `anonymous`
+- `ftp`
+
+### WebDAV
+
+When anonymous access is disabled, WebDAV uses HTTP Basic authentication with the configured username and password.
+
+## Firewall management
+
+From the tray menu, open **Firewall management** to:
+
+- Check whether an enabled Windows Firewall rule exists for the current `SimpleShare.exe`
+- Add an inbound allow rule for the executable
+- Remove the Simple Share firewall rule
+
+Adding or removing the rule requires Windows administrator approval.
+
+## Update check
+
+Simple Share checks the latest GitHub Release only when **Check for updates** is selected from the tray menu.
+
+The application compares its built-in version with the latest release tag, such as `v1.0.0`. If a newer version is available, it offers to open the GitHub Releases page in the default browser.
+
+Simple Share does not currently replace or update the executable automatically.
 
 ## Build
 
@@ -48,33 +131,29 @@ Requirements:
 - Windows 10/11
 - Go 1.25 or newer
 
-The recommended local build method is:
+Recommended local build method:
 
 ```bat
 build.bat
 ```
 
-`build.bat` prepares Go modules, embeds the Windows manifest and application icon, and builds `SimpleShare.exe` as a GUI application.
+`build.bat` prepares Go modules, embeds the Windows manifest and application icon, and builds `SimpleShare.exe` as a Windows GUI application.
 
-GitHub Actions also builds a Windows x64 artifact on pushes and pull requests.
-
-## Update check
-
-The application checks the latest GitHub Release only when requested from the tray menu. The current application version is compared with the release tag (for example, `v0.2.0`). If a newer version exists, Simple Share can open the release page in the default browser.
+GitHub Actions builds the Windows x64 executable on pushes and pull requests. Release commits are also used to publish versioned GitHub Releases.
 
 ## Security notes
 
-- FTP is not encrypted. Use it only on a trusted network unless you add a protected network layer such as a VPN.
-- The initial WebDAV implementation uses HTTP. Do not expose it directly to the public Internet without TLS termination or another secure tunnel.
+- FTP traffic is not encrypted. Use FTP only on a trusted network or through a protected network layer such as a VPN.
+- WebDAV currently uses HTTP, not HTTPS. Do not expose it directly to the public Internet without TLS termination, VPN, or another secure tunnel.
 - Anonymous access allows clients to access the configured root folder without credentials.
 - The configured root folder is the filesystem boundary exposed by the selected server.
-- The current initial version stores its configured password in the local JSON configuration file. Protect the Windows account and any exported settings backups accordingly.
+- The configured password is currently stored as plain text in the local JSON configuration file.
+- Exported settings backups can also contain the password.
+- Protect the Windows account, configuration file, and backup files accordingly.
 
-## Project status
+## Version
 
-Initial development version: `0.1.0`
-
-The first milestone focuses on a compact Windows tray application and the requested core sharing features.
+Current stable version: **1.0.0**
 
 ## License
 
