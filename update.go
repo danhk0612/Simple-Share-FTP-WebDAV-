@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	Version       = "0.1.0"
+	Version       = "1.0.0"
 	releasesAPI   = "https://api.github.com/repos/danhk0612/Simple-Share-FTP-WebDAV-/releases/latest"
 	releasesPage  = "https://github.com/danhk0612/Simple-Share-FTP-WebDAV-/releases"
 )
