@@ -1,0 +1,4 @@
+SimpleShare.exe
+*.syso
+dist/
+config.json
