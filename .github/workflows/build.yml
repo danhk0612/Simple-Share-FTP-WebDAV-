@@ -22,8 +22,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Download modules
-        run: go mod download
+      - name: Prepare modules
+        run: go mod tidy
 
       - name: Install resource compiler
         run: go install github.com/akavel/rsrc@latest
@@ -39,5 +39,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: SimpleShare-windows-amd64
-          path: SimpleShare.exe
+          path: |
+            SimpleShare.exe
+            go.sum
           if-no-files-found: error
