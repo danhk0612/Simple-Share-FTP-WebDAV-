@@ -7,8 +7,8 @@ where go >nul 2>nul || (
   exit /b 1
 )
 
-echo [1/4] Downloading modules...
-go mod download || exit /b 1
+echo [1/4] Preparing modules...
+go mod tidy || exit /b 1
 
 echo [2/4] Installing resource compiler...
 go install github.com/akavel/rsrc@latest || exit /b 1
