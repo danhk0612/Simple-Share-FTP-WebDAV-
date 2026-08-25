@@ -48,16 +48,13 @@ Requirements:
 - Windows 10/11
 - Go 1.25 or newer
 
+The recommended local build method is:
+
 ```bat
 build.bat
 ```
 
-Or:
-
-```bat
-go mod download
-go build -trimpath -ldflags="-s -w -H windowsgui" -o SimpleShare.exe .
-```
+`build.bat` prepares Go modules, embeds the Windows manifest and application icon, and builds `SimpleShare.exe` as a GUI application.
 
 GitHub Actions also builds a Windows x64 artifact on pushes and pull requests.
 
@@ -71,6 +68,7 @@ The application checks the latest GitHub Release only when requested from the tr
 - The initial WebDAV implementation uses HTTP. Do not expose it directly to the public Internet without TLS termination or another secure tunnel.
 - Anonymous access allows clients to access the configured root folder without credentials.
 - The configured root folder is the filesystem boundary exposed by the selected server.
+- The current initial version stores its configured password in the local JSON configuration file. Protect the Windows account and any exported settings backups accordingly.
 
 ## Project status
 
