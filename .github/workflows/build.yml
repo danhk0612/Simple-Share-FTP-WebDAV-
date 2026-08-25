@@ -1,0 +1,43 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Install resource compiler
+        run: go install github.com/akavel/rsrc@latest
+
+      - name: Embed icon and manifest
+        shell: pwsh
+        run: '& "$env:USERPROFILE\go\bin\rsrc.exe" -manifest app.manifest -ico assets\app.ico -o rsrc.syso'
+
+      - name: Build
+        run: go build -trimpath -ldflags="-s -w -H windowsgui" -o SimpleShare.exe .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: SimpleShare-windows-amd64
+          path: SimpleShare.exe
+          if-no-files-found: error
