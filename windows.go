@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"golang.org/x/sys/windows/registry"
 )
@@ -44,7 +45,7 @@ func firewallAllowed() (bool, error) {
 	quotedName := strings.ReplaceAll(firewallRuleName, "'", "''")
 	quotedExe := strings.ReplaceAll(exe, "'", "''")
 	script := fmt.Sprintf(`$r = Get-NetFirewallRule -DisplayName '%s' -ErrorAction SilentlyContinue | Where-Object {$_.Enabled -eq 'True'} | Get-NetFirewallApplicationFilter | Where-Object {$_.Program -ieq '%s'}; if ($r) { exit 0 } else { exit 1 }`, quotedName, quotedExe)
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd := hiddenCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script)
 	err = cmd.Run()
 	if err == nil {
 		return true, nil
@@ -62,8 +63,14 @@ func addFirewallRule() error {
 	}
 	nameArg := `name="` + firewallRuleName + `"`
 	programArg := `program="` + exe + `"`
-	script := fmt.Sprintf(`Start-Process -FilePath 'netsh.exe' -Verb RunAs -Wait -ArgumentList @('advfirewall','firewall','delete','rule','%s'); Start-Process -FilePath 'netsh.exe' -Verb RunAs -Wait -ArgumentList @('advfirewall','firewall','add','rule','%s','dir=in','action=allow','%s','enable=yes','profile=any')`, escapePS(nameArg), escapePS(nameArg), escapePS(programArg))
-	return exec.Command("powershell.exe", "-NoProfile", "-Command", script).Run()
+	script := fmt.Sprintf(`Start-Process -FilePath 'netsh.exe' -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @('advfirewall','firewall','delete','rule','%s'); Start-Process -FilePath 'netsh.exe' -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @('advfirewall','firewall','add','rule','%s','dir=in','action=allow','%s','enable=yes','profile=any')`, escapePS(nameArg), escapePS(nameArg), escapePS(programArg))
+	return hiddenCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Run()
+}
+
+func hiddenCommand(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	return cmd
 }
 
 func escapePS(s string) string {
