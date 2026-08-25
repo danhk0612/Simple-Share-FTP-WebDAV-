@@ -67,6 +67,12 @@ func addFirewallRule() error {
 	return hiddenCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Run()
 }
 
+func removeFirewallRule() error {
+	nameArg := `name="` + firewallRuleName + `"`
+	script := fmt.Sprintf(`Start-Process -FilePath 'netsh.exe' -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList @('advfirewall','firewall','delete','rule','%s')`, escapePS(nameArg))
+	return hiddenCommand("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Run()
+}
+
 func hiddenCommand(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
