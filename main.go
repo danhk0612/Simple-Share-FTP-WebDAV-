@@ -226,6 +226,7 @@ func createSettingsDialog(owner walk.Form, cfg *Config, onSaved func()) (*walk.D
 	var anonymousCB, autoCB *walk.CheckBox
 	var savePB, cancelPB *walk.PushButton
 	accepted := false
+	async := onSaved != nil
 
 	protocolIndex := 0
 	if cfg.Protocol == "ftp" { protocolIndex = 1 }
@@ -274,16 +275,32 @@ func createSettingsDialog(owner walk.Form, cfg *Config, onSaved func()) (*walk.D
 					if languageCB.CurrentIndex() == 1 { cfg.Language = "en" }
 					if err := saveConfig(*cfg); err != nil { showErr(dlg, *cfg, err); return }
 					accepted = true
+					if async {
+						dlg.Hide()
+						onSaved()
+						return
+					}
 					dlg.Accept()
-					if onSaved != nil { onSaved() }
 				}},
-				PushButton{AssignTo: &cancelPB, Text: tr(cfg.Language, "cancel"), OnClicked: func() { dlg.Cancel() }},
+				PushButton{AssignTo: &cancelPB, Text: tr(cfg.Language, "cancel"), OnClicked: func() {
+					if async {
+						dlg.Hide()
+						return
+					}
+					dlg.Cancel()
+				}},
 			}},
 		},
 	}
 
 	if err := definition.Create(owner); err != nil {
 		return nil, &accepted, err
+	}
+	if async {
+		dlg.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
+			*canceled = true
+			dlg.Hide()
+		})
 	}
 	return dlg, &accepted, nil
 }
