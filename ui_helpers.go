@@ -76,14 +76,19 @@ func firewallOK(lang string) string {
 	return "Windows 방화벽에서 이 실행 파일이 허용되어 있습니다."
 }
 
-func firewallAsk(lang string) string {
-	if lang == "en" { return "No enabled firewall rule was found for this executable. Add one now? Administrator approval is required." }
-	return "이 실행 파일에 대한 활성 방화벽 규칙이 없습니다. 지금 추가하시겠습니까? 관리자 승인이 필요합니다."
+func firewallNotAllowed(lang string) string {
+	if lang == "en" { return "No enabled Windows Firewall rule was found for this executable." }
+	return "Windows 방화벽에서 이 실행 파일에 대한 활성 허용 규칙이 없습니다."
 }
 
 func firewallAdded(lang string) string {
 	if lang == "en" { return "The Windows Firewall rule was added." }
 	return "Windows 방화벽 규칙을 추가했습니다."
+}
+
+func firewallRemoved(lang string) string {
+	if lang == "en" { return "The Windows Firewall allow rule was removed." }
+	return "Windows 방화벽 허용 규칙을 제거했습니다."
 }
 
 func resetAsk(lang string) string {
