@@ -189,8 +189,6 @@ func showSettings(owner walk.Form, cfg *Config) bool {
 		Title: tr(cfg.Language, "app"),
 		MinSize: Size{520, 330},
 		Layout: VBox{},
-		AcceptButton: &savePB,
-		CancelButton: &cancelPB,
 		Children: []Widget{
 			Composite{Layout: Grid{Columns: 2}, Children: []Widget{
 				Label{Text: tr(cfg.Language, "protocol")},
