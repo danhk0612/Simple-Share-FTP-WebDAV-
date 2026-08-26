@@ -4,7 +4,7 @@
 
 Simple Share (FTP/WebDAV) is a lightweight Windows tray utility for sharing a local folder over FTP or WebDAV.
 
-Current stable release: **v1.0.0**
+Current stable release: **v1.0.1**
 
 ## Features
 
@@ -16,6 +16,10 @@ Current stable release: **v1.0.0**
   - Check current rule status
   - Allow this application
   - Remove the allow rule
+- Protocol/status-aware tray icons
+  - FTP running / stopped icons
+  - WebDAV running / stopped icons
+- Protocol icon on the Settings window title bar
 - System tray operation
 - Start / stop server from the tray
 - Open the shared root folder from the tray
@@ -79,6 +83,8 @@ The tray menu includes:
 - Start with Windows
 - Exit
 
+The tray icon changes automatically according to the selected protocol and server state. FTP and WebDAV use distinct icons, and stopped servers use a gray variant.
+
 ## Configuration
 
 Configuration is stored under the current user's roaming application data directory:
@@ -120,7 +126,7 @@ Adding or removing the rule requires Windows administrator approval.
 
 Simple Share checks the latest GitHub Release only when **Check for updates** is selected from the tray menu.
 
-The application compares its built-in version with the latest release tag, such as `v1.0.0`. If a newer version is available, it offers to open the GitHub Releases page in the default browser.
+The application compares its built-in version with the latest release tag, such as `v1.0.1`. If a newer version is available, it offers to open the GitHub Releases page in the default browser.
 
 Simple Share does not currently replace or update the executable automatically.
 
@@ -153,7 +159,7 @@ GitHub Actions builds the Windows x64 executable on pushes and pull requests. Re
 
 ## Version
 
-Current stable version: **1.0.0**
+Current stable version: **1.0.1**
 
 ## License
 
