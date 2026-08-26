@@ -11,10 +11,26 @@ import (
 	. "github.com/lxn/walk/declarative"
 )
 
-//go:embed assets/app.ico
-var appIconBytes []byte
+//go:embed assets/app-ftp.ico
+var ftpIconBytes []byte
+
+//go:embed assets/app-ftp-stopped.ico
+var ftpStoppedIconBytes []byte
+
+//go:embed assets/app-webdav.ico
+var webdavIconBytes []byte
+
+//go:embed assets/app-webdav-stopped.ico
+var webdavStoppedIconBytes []byte
 
 var manager ServerManager
+
+var statusIcons struct {
+	ftpRunning     *walk.Icon
+	ftpStopped     *walk.Icon
+	webdavRunning  *walk.Icon
+	webdavStopped  *walk.Icon
+}
 
 func main() {
 	cfg, exists, err := loadConfig()
@@ -28,6 +44,7 @@ func main() {
 		return
 	}
 	defer mw.Dispose()
+	loadStatusIcons()
 
 	if !exists {
 		if !showSettings(mw, &cfg) {
@@ -45,7 +62,7 @@ func main() {
 		return
 	}
 	defer ni.Dispose()
-	if icon := loadTrayIcon(); icon != nil {
+	if icon := protocolStatusIcon(cfg.Protocol, manager.IsRunning()); icon != nil {
 		_ = ni.SetIcon(icon)
 	}
 	_ = ni.SetToolTip(tr(cfg.Language, "app"))
@@ -53,6 +70,10 @@ func main() {
 
 	var rebuild func()
 	rebuild = func() {
+		if icon := protocolStatusIcon(cfg.Protocol, manager.IsRunning()); icon != nil {
+			_ = ni.SetIcon(icon)
+		}
+
 		actions := ni.ContextMenu().Actions()
 		actions.Clear()
 
@@ -307,6 +328,9 @@ func createSettingsDialog(owner walk.Form, cfg *Config, onSaved func()) (*walk.D
 	if err := definition.Create(owner); err != nil {
 		return nil, &accepted, err
 	}
+	if icon := protocolStatusIcon(cfg.Protocol, true); icon != nil {
+		_ = dlg.SetIcon(icon)
+	}
 	if async {
 		dlg.Closing().Attach(func(canceled *bool, reason walk.CloseReason) {
 			*canceled = true
@@ -316,14 +340,30 @@ func createSettingsDialog(owner walk.Form, cfg *Config, onSaved func()) (*walk.D
 	return dlg, &accepted, nil
 }
 
-func loadTrayIcon() *walk.Icon {
+func loadStatusIcons() {
+	statusIcons.ftpRunning = loadEmbeddedIcon("app-ftp.ico", ftpIconBytes)
+	statusIcons.ftpStopped = loadEmbeddedIcon("app-ftp-stopped.ico", ftpStoppedIconBytes)
+	statusIcons.webdavRunning = loadEmbeddedIcon("app-webdav.ico", webdavIconBytes)
+	statusIcons.webdavStopped = loadEmbeddedIcon("app-webdav-stopped.ico", webdavStoppedIconBytes)
+}
+
+func loadEmbeddedIcon(name string, data []byte) *walk.Icon {
 	dir := filepath.Join(os.TempDir(), "SimpleShareFTPWebDAV")
 	if os.MkdirAll(dir, 0700) != nil { return walk.IconApplication() }
-	path := filepath.Join(dir, "app.ico")
-	if os.WriteFile(path, appIconBytes, 0600) != nil { return walk.IconApplication() }
+	path := filepath.Join(dir, name)
+	if os.WriteFile(path, data, 0600) != nil { return walk.IconApplication() }
 	icon, err := walk.NewIconFromFile(path)
 	if err != nil { return walk.IconApplication() }
 	return icon
+}
+
+func protocolStatusIcon(protocol string, running bool) *walk.Icon {
+	if protocol == "ftp" {
+		if running { return statusIcons.ftpRunning }
+		return statusIcons.ftpStopped
+	}
+	if running { return statusIcons.webdavRunning }
+	return statusIcons.webdavStopped
 }
 
 func protocolLabel(p string) string {
