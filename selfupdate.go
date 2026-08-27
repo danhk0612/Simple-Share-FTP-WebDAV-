@@ -6,7 +6,18 @@ import (
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/lxn/walk"
 )
+
+func init() {
+	if len(os.Args) == 4 && os.Args[1] == "--apply-update" {
+		if err := runApplyUpdate(os.Args[2], os.Args[3]); err != nil {
+			walk.MsgBox(nil, "Simple Share (FTP/WebDAV)", fmt.Sprintf("업데이트 적용에 실패했습니다.\n\n%v", err), walk.MsgBoxIconError)
+		}
+		os.Exit(0)
+	}
+}
 
 func runApplyUpdate(targetPath, newExePath string) error {
 	time.Sleep(700 * time.Millisecond)
