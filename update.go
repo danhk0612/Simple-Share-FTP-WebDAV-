@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	Version             = "1.0.1"
+	Version             = "1.0.2"
 	releasesAPI         = "https://api.github.com/repos/danhk0612/Simple-Share-FTP-WebDAV-/releases/latest"
 	updateExeAssetName  = "SimpleShare.exe"
 	updateHashAssetName = "SimpleShare.exe.sha256"
