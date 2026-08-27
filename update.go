@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	// Self-update with verified in-place replacement is available from v1.0.2.
 	Version             = "1.0.2"
 	releasesAPI         = "https://api.github.com/repos/danhk0612/Simple-Share-FTP-WebDAV-/releases/latest"
 	updateExeAssetName  = "SimpleShare.exe"
