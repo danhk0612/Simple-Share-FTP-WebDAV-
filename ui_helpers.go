@@ -10,23 +10,50 @@ import (
 )
 
 func handleUpdate(owner walk.Form, cfg Config) {
-	available, latest, url, err := checkUpdate()
+	info, err := fetchLatestRelease()
 	if err != nil {
 		showErr(owner, cfg, err)
 		return
 	}
-	if !available {
-		msg := "현재 최신 버전입니다."
-		if cfg.Language == "en" { msg = "You are using the latest version." }
-		walk.MsgBox(owner, tr(cfg.Language, "app"), msg+"\n\n"+Version, walk.MsgBoxIconInformation)
+	latest := latestVersion(info)
+	if latest == "" {
+		showErr(owner, cfg, fmt.Errorf("latest release version is empty"))
 		return
 	}
-	msg := fmt.Sprintf("새 버전 %s이 있습니다.\n현재 버전: %s\n\nGitHub Releases를 여시겠습니까?", latest, Version)
-	if cfg.Language == "en" { msg = fmt.Sprintf("Version %s is available.\nCurrent version: %s\n\nOpen GitHub Releases?", latest, Version) }
-	if walk.MsgBox(owner, tr(cfg.Language, "app"), msg, walk.MsgBoxYesNo|walk.MsgBoxIconQuestion) == walk.DlgCmdYes {
-		if url == "" { url = releasesPage }
-		_ = openURL(url)
+	if compareVersion(latest, Version) <= 0 {
+		msg := fmt.Sprintf("현재 최신 버전입니다.\n\n현재 버전: %s", Version)
+		if cfg.Language == "en" {
+			msg = fmt.Sprintf("You are using the latest version.\n\nCurrent version: %s", Version)
+		}
+		walk.MsgBox(owner, tr(cfg.Language, "app"), msg, walk.MsgBoxIconInformation)
+		return
 	}
+
+	msg := fmt.Sprintf("새 버전 %s이 있습니다.\n현재 버전: %s\n\n지금 업데이트하시겠습니까?\n업데이트가 완료되면 프로그램이 자동으로 재시작됩니다.", latest, Version)
+	if cfg.Language == "en" {
+		msg = fmt.Sprintf("Version %s is available.\nCurrent version: %s\n\nUpdate now?\nThe application will restart automatically when the update is complete.", latest, Version)
+	}
+	if walk.MsgBox(owner, tr(cfg.Language, "app"), msg, walk.MsgBoxYesNo|walk.MsgBoxIconQuestion) != walk.DlgCmdYes {
+		return
+	}
+
+	downloading := "업데이트 파일을 다운로드하고 검증합니다. 완료 후 프로그램이 자동으로 재시작됩니다."
+	if cfg.Language == "en" {
+		downloading = "The update will be downloaded and verified. The application will restart automatically when complete."
+	}
+	walk.MsgBox(owner, tr(cfg.Language, "app"), downloading, walk.MsgBoxIconInformation)
+
+	update, err := prepareUpdate(info)
+	if err != nil {
+		showErr(owner, cfg, err)
+		return
+	}
+	if err := startPreparedUpdate(update); err != nil {
+		showErr(owner, cfg, err)
+		return
+	}
+	_ = manager.Stop()
+	walk.App().Exit(0)
 }
 
 func backupSettings(owner walk.Form, cfg Config) {
