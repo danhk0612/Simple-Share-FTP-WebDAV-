@@ -186,10 +186,7 @@ func main() {
 		_ = actions.Add(firewallAction)
 
 		_ = actions.Add(newAction(tr(cfg.Language, "update"), func() {
-			if handleUpdate(mw, cfg) {
-				_ = manager.Stop()
-				walk.App().Exit(0)
-			}
+			handleUpdate(mw, cfg)
 		}))
 		_ = actions.Add(walk.NewSeparatorAction())
 
