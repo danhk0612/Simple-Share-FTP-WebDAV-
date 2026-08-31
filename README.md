@@ -4,7 +4,7 @@
 
 Simple Share (FTP/WebDAV) is a lightweight Windows tray utility for sharing a local folder over FTP or WebDAV.
 
-Current stable release: **v1.0.1**
+Current stable release: **v1.0.3**
 
 ## Features
 
@@ -20,6 +20,7 @@ Current stable release: **v1.0.1**
   - FTP running / stopped icons
   - WebDAV running / stopped icons
 - Protocol icon on the Settings window title bar
+- Double-click the tray icon to open Settings
 - System tray operation
 - Start / stop server from the tray
 - Open the shared root folder from the tray
@@ -28,7 +29,12 @@ Current stable release: **v1.0.1**
   - Back up settings
   - Restore settings
   - Reset settings
-- GitHub Releases update check
+- In-app GitHub Releases updater
+  - Download progress and transferred size
+  - SHA-256 verification
+  - Cancel while downloading
+  - Safe in-place executable replacement
+  - Five-second restart countdown after replacement
 - Korean (default) and English UI
 - Start with Windows toggle
 - Single executable distribution for Windows x64
@@ -38,6 +44,7 @@ Current stable release: **v1.0.1**
 Download the latest Windows build from the GitHub Releases page:
 
 - `SimpleShare.exe`
+- `SimpleShare.exe.sha256`
 
 Release page: https://github.com/danhk0612/Simple-Share-FTP-WebDAV-/releases
 
@@ -83,7 +90,7 @@ The tray menu includes:
 - Start with Windows
 - Exit
 
-The tray icon changes automatically according to the selected protocol and server state. FTP and WebDAV use distinct icons, and stopped servers use a gray variant.
+The tray icon changes automatically according to the selected protocol and server state. FTP and WebDAV use distinct icons, and stopped servers use a gray variant. Double-clicking the tray icon opens Settings.
 
 ## Configuration
 
@@ -122,13 +129,15 @@ From the tray menu, open **Firewall management** to:
 
 Adding or removing the rule requires Windows administrator approval.
 
-## Update check
+## In-app update
 
-Simple Share checks the latest GitHub Release only when **Check for updates** is selected from the tray menu.
+Select **Check for updates** from the tray menu. If a newer GitHub Release is available, Simple Share asks whether to install it.
 
-The application compares its built-in version with the latest release tag, such as `v1.0.1`. If a newer version is available, it offers to open the GitHub Releases page in the default browser.
+During an update, a dedicated window shows the current stage, download percentage, and transferred size. If GitHub does not provide a total file size, the progress bar switches to an indeterminate state instead of showing an incorrect percentage.
 
-Simple Share does not currently replace or update the executable automatically.
+The update can be cancelled while files are being downloaded. After download, Simple Share retrieves `SimpleShare.exe.sha256` and verifies the downloaded executable. Cancellation is disabled once the executable replacement stage begins.
+
+The verified new executable runs as the temporary updater. It waits for the old process to exit, replaces the original `SimpleShare.exe`, and then shows an update-complete window with a five-second automatic restart countdown and a **Restart Now** button.
 
 ## Build
 
@@ -145,7 +154,7 @@ build.bat
 
 `build.bat` prepares Go modules, embeds the Windows manifest and application icon, and builds `SimpleShare.exe` as a Windows GUI application.
 
-GitHub Actions builds the Windows x64 executable on pushes and pull requests. Release commits are also used to publish versioned GitHub Releases.
+GitHub Actions builds the Windows x64 executable and SHA-256 file on pushes and pull requests. Release commits publish both files to GitHub Releases.
 
 ## Security notes
 
@@ -155,11 +164,12 @@ GitHub Actions builds the Windows x64 executable on pushes and pull requests. Re
 - The configured root folder is the filesystem boundary exposed by the selected server.
 - The configured password is currently stored as plain text in the local JSON configuration file.
 - Exported settings backups can also contain the password.
+- Update executables are verified against the SHA-256 file published with the GitHub Release before replacement begins.
 - Protect the Windows account, configuration file, and backup files accordingly.
 
 ## Version
 
-Current stable version: **1.0.1**
+Current stable version: **1.0.3**
 
 ## License
 
