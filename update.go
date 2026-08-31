@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -18,8 +19,7 @@ import (
 )
 
 const (
-	// Self-update with verified in-place replacement is available from v1.0.2.
-	Version             = "1.0.2"
+	Version             = "1.0.3"
 	releasesAPI         = "https://api.github.com/repos/danhk0612/Simple-Share-FTP-WebDAV-/releases/latest"
 	updateExeAssetName  = "SimpleShare.exe"
 	updateHashAssetName = "SimpleShare.exe.sha256"
@@ -37,10 +37,13 @@ type releaseInfo struct {
 }
 
 type preparedUpdate struct {
-	updaterPath string
-	newExePath  string
-	targetPath  string
+	updaterPath  string
+	newExePath   string
+	targetPath   string
+	latestVersion string
 }
+
+type updateProgressFunc func(status, detail string, percent int, marquee, cancelable bool)
 
 func fetchLatestRelease() (releaseInfo, error) {
 	client := &http.Client{Timeout: 15 * time.Second}
@@ -72,7 +75,9 @@ func latestVersion(info releaseInfo) string {
 	return strings.TrimPrefix(strings.TrimSpace(info.TagName), "v")
 }
 
-func prepareUpdate(info releaseInfo) (preparedUpdate, error) {
+func prepareUpdate(ctx context.Context, info releaseInfo, report updateProgressFunc, lang string) (result preparedUpdate, err error) {
+	latest := latestVersion(info)
+	result.latestVersion = latest
 	var exeURL, hashURL string
 	for _, asset := range info.Assets {
 		switch asset.Name {
@@ -83,49 +88,68 @@ func prepareUpdate(info releaseInfo) (preparedUpdate, error) {
 		}
 	}
 	if exeURL == "" || hashURL == "" {
-		return preparedUpdate{}, errors.New("release does not contain SimpleShare.exe and its SHA-256 file")
+		return result, errors.New("release does not contain SimpleShare.exe and its SHA-256 file")
 	}
 
 	target, err := os.Executable()
 	if err != nil {
-		return preparedUpdate{}, err
+		return result, err
 	}
 	target, err = filepath.Abs(target)
 	if err != nil {
-		return preparedUpdate{}, err
+		return result, err
 	}
 
 	tempDir, err := os.MkdirTemp("", "SimpleShare-update-*")
 	if err != nil {
-		return preparedUpdate{}, err
+		return result, err
 	}
+	success := false
+	defer func() {
+		if !success {
+			_ = os.RemoveAll(tempDir)
+		}
+	}()
+
 	newExe := filepath.Join(tempDir, "SimpleShare.new.exe")
 	hashFile := filepath.Join(tempDir, updateHashAssetName)
-	updater := filepath.Join(tempDir, "SimpleShare.updater.exe")
 
-	if err := downloadUpdateFile(exeURL, newExe); err != nil {
-		return preparedUpdate{}, err
+	if report != nil {
+		report(updateText(lang, "업데이트 파일을 다운로드하는 중...", "Downloading update file..."), "0%", 0, false, true)
 	}
-	if err := downloadUpdateFile(hashURL, hashFile); err != nil {
-		return preparedUpdate{}, err
+	if err := downloadUpdateFile(ctx, exeURL, newExe, true, report, lang); err != nil {
+		return result, err
+	}
+	if report != nil {
+		report(updateText(lang, "검증 정보를 다운로드하는 중...", "Downloading verification data..."), updateText(lang, "SHA-256 체크섬을 가져오고 있습니다.", "Retrieving the SHA-256 checksum."), 100, true, true)
+	}
+	if err := downloadUpdateFile(ctx, hashURL, hashFile, false, report, lang); err != nil {
+		return result, err
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	if report != nil {
+		report(updateText(lang, "다운로드한 파일을 확인하는 중...", "Verifying the downloaded file..."), "SHA-256", 100, true, false)
 	}
 	if err := verifySHA256File(newExe, hashFile); err != nil {
-		return preparedUpdate{}, err
-	}
-	if err := copyUpdateFile(target, updater); err != nil {
-		return preparedUpdate{}, err
+		return result, err
 	}
 
-	return preparedUpdate{updaterPath: updater, newExePath: newExe, targetPath: target}, nil
+	result.updaterPath = newExe
+	result.newExePath = newExe
+	result.targetPath = target
+	success = true
+	return result, nil
 }
 
-func startPreparedUpdate(update preparedUpdate) error {
-	return exec.Command(update.updaterPath, "--apply-update", update.targetPath, update.newExePath).Start()
+func startPreparedUpdate(update preparedUpdate, lang string) error {
+	return exec.Command(update.updaterPath, "--apply-update", update.targetPath, update.newExePath, Version, update.latestVersion, lang).Start()
 }
 
-func downloadUpdateFile(url, path string) error {
+func downloadUpdateFile(ctx context.Context, url, path string, reportProgress bool, report updateProgressFunc, lang string) error {
 	client := &http.Client{Timeout: 90 * time.Second}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
@@ -138,13 +162,56 @@ func downloadUpdateFile(url, path string) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download HTTP %d", resp.StatusCode)
 	}
+
+	const maxSize = int64(100 << 20)
+	if resp.ContentLength > maxSize {
+		return errors.New("download exceeds size limit")
+	}
 	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, err = io.Copy(f, io.LimitReader(resp.Body, 100<<20))
-	return err
+
+	reader := io.LimitReader(resp.Body, maxSize+1)
+	buf := make([]byte, 64*1024)
+	var written int64
+	total := resp.ContentLength
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		n, readErr := reader.Read(buf)
+		if n > 0 {
+			written += int64(n)
+			if written > maxSize {
+				return errors.New("download exceeds size limit")
+			}
+			if _, err := f.Write(buf[:n]); err != nil {
+				return err
+			}
+			if reportProgress && report != nil {
+				percent := 0
+				marquee := total <= 0
+				detail := fmt.Sprintf("%.1f MB", float64(written)/(1024*1024))
+				if total > 0 {
+					percent = int(written * 100 / total)
+					if percent > 100 {
+						percent = 100
+					}
+					detail = fmt.Sprintf("%.1f MB / %.1f MB  (%d%%)", float64(written)/(1024*1024), float64(total)/(1024*1024), percent)
+				}
+				report(updateText(lang, "업데이트 파일을 다운로드하는 중...", "Downloading update file..."), detail, percent, marquee, true)
+			}
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return readErr
+		}
+	}
+	return nil
 }
 
 func verifySHA256File(exePath, hashPath string) error {
