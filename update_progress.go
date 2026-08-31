@@ -18,6 +18,7 @@ type updateProgressWindow struct {
 	progress   *walk.ProgressBar
 	cancelBtn  *walk.PushButton
 	cancel     context.CancelFunc
+	lang       string
 	cancelable bool
 	closed     bool
 	mu         sync.Mutex
@@ -31,7 +32,7 @@ func updateText(lang, ko, en string) string {
 }
 
 func openUpdateProgressWindow(owner walk.Form, cfg Config, latest string, cancel context.CancelFunc) (*updateProgressWindow, error) {
-	w := &updateProgressWindow{cancel: cancel, cancelable: true}
+	w := &updateProgressWindow{cancel: cancel, lang: cfg.Language, cancelable: true}
 	var cancelBtn *walk.PushButton
 
 	definition := Dialog{
@@ -88,7 +89,7 @@ func (w *updateProgressWindow) requestCancel() {
 	w.mu.Unlock()
 
 	_ = w.cancelBtn.SetEnabled(false)
-	_ = w.status.SetText(updateText(currentLanguage(), "업데이트를 중단하는 중...", "Cancelling update..."))
+	_ = w.status.SetText(updateText(w.lang, "업데이트를 중단하는 중...", "Cancelling update..."))
 	if cancel != nil {
 		cancel()
 	}
@@ -135,22 +136,12 @@ func (w *updateProgressWindow) close() {
 	w.closed = true
 	w.cancelable = false
 	w.mu.Unlock()
-	w.dlg.Synchronize(func() {
-		w.dlg.Hide()
-		w.dlg.Dispose()
-	})
+	w.dlg.Hide()
+	w.dlg.Dispose()
 }
 
 func (w *updateProgressWindow) synchronize(fn func()) {
 	w.dlg.Synchronize(fn)
-}
-
-func currentLanguage() string {
-	cfg, _, err := loadConfig()
-	if err == nil && cfg.Language == "en" {
-		return "en"
-	}
-	return "ko"
 }
 
 func runUpdateCompleteCountdown(targetPath, oldVersion, newVersion, lang string) error {
