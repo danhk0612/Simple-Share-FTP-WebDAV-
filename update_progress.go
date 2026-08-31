@@ -88,7 +88,7 @@ func (w *updateProgressWindow) requestCancel() {
 	cancel := w.cancel
 	w.mu.Unlock()
 
-	_ = w.cancelBtn.SetEnabled(false)
+	w.cancelBtn.SetEnabled(false)
 	_ = w.status.SetText(updateText(w.lang, "업데이트를 중단하는 중...", "Cancelling update..."))
 	if cancel != nil {
 		cancel()
@@ -121,9 +121,9 @@ func (w *updateProgressWindow) set(status, detail string, percent int, marquee, 
 			if percent > 100 {
 				percent = 100
 			}
-			_ = w.progress.SetValue(percent)
+			w.progress.SetValue(percent)
 		}
-		_ = w.cancelBtn.SetEnabled(cancelable)
+		w.cancelBtn.SetEnabled(cancelable)
 	})
 }
 
