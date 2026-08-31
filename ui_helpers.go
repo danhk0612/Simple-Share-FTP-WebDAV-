@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,31 +31,48 @@ func handleUpdate(owner walk.Form, cfg Config) {
 		return
 	}
 
-	msg := fmt.Sprintf("새 버전 %s이 있습니다.\n현재 버전: %s\n\n지금 업데이트하시겠습니까?\n업데이트가 완료되면 프로그램이 자동으로 재시작됩니다.", latest, Version)
+	msg := fmt.Sprintf("새 버전 %s이 있습니다.\n현재 버전: %s\n\n지금 업데이트하시겠습니까?", latest, Version)
 	if cfg.Language == "en" {
-		msg = fmt.Sprintf("Version %s is available.\nCurrent version: %s\n\nUpdate now?\nThe application will restart automatically when the update is complete.", latest, Version)
+		msg = fmt.Sprintf("Version %s is available.\nCurrent version: %s\n\nUpdate now?", latest, Version)
 	}
 	if walk.MsgBox(owner, tr(cfg.Language, "app"), msg, walk.MsgBoxYesNo|walk.MsgBoxIconQuestion) != walk.DlgCmdYes {
 		return
 	}
 
-	downloading := "업데이트 파일을 다운로드하고 검증합니다. 완료 후 프로그램이 자동으로 재시작됩니다."
-	if cfg.Language == "en" {
-		downloading = "The update will be downloaded and verified. The application will restart automatically when complete."
-	}
-	walk.MsgBox(owner, tr(cfg.Language, "app"), downloading, walk.MsgBoxIconInformation)
-
-	update, err := prepareUpdate(info)
+	ctx, cancel := context.WithCancel(context.Background())
+	progress, err := openUpdateProgressWindow(owner, cfg, latest, cancel)
 	if err != nil {
+		cancel()
 		showErr(owner, cfg, err)
 		return
 	}
-	if err := startPreparedUpdate(update); err != nil {
-		showErr(owner, cfg, err)
-		return
-	}
-	_ = manager.Stop()
-	walk.App().Exit(0)
+	progress.set(updateText(cfg.Language, "업데이트 파일 다운로드 준비 중...", "Preparing update download..."), "0%", 0, false, true)
+
+	go func() {
+		update, err := prepareUpdate(ctx, info, progress.set, cfg.Language)
+		if err != nil {
+			progress.synchronize(func() {
+				progress.close()
+				if errors.Is(err, context.Canceled) {
+					walk.MsgBox(owner, tr(cfg.Language, "app"), updateText(cfg.Language, "업데이트가 취소되었습니다.\n\n현재 버전은 변경되지 않았습니다.", "The update was cancelled.\n\nThe current version was not changed."), walk.MsgBoxIconInformation)
+					return
+				}
+				showErr(owner, cfg, err)
+			})
+			return
+		}
+
+		progress.set(updateText(cfg.Language, "업데이트를 적용할 준비를 하는 중...", "Preparing to apply the update..."), updateText(cfg.Language, "이 단계부터는 업데이트를 중단할 수 없습니다.", "The update can no longer be cancelled."), 100, false, false)
+		progress.synchronize(func() {
+			if err := startPreparedUpdate(update, cfg.Language); err != nil {
+				progress.close()
+				showErr(owner, cfg, err)
+				return
+			}
+			_ = manager.Stop()
+			walk.App().Exit(0)
+		})
+	}()
 }
 
 func backupSettings(owner walk.Form, cfg Config) {
