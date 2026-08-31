@@ -11,15 +11,23 @@ import (
 )
 
 func init() {
-	if len(os.Args) == 4 && os.Args[1] == "--apply-update" {
-		if err := runApplyUpdate(os.Args[2], os.Args[3]); err != nil {
-			walk.MsgBox(nil, "Simple Share (FTP/WebDAV)", fmt.Sprintf("업데이트 적용에 실패했습니다.\n\n%v", err), walk.MsgBoxIconError)
+	if len(os.Args) >= 4 && os.Args[1] == "--apply-update" {
+		oldVersion := ""
+		newVersion := Version
+		lang := "ko"
+		if len(os.Args) >= 7 {
+			oldVersion = os.Args[4]
+			newVersion = os.Args[5]
+			lang = os.Args[6]
+		}
+		if err := runApplyUpdate(os.Args[2], os.Args[3], oldVersion, newVersion, lang); err != nil {
+			walk.MsgBox(nil, updateText(lang, "Simple Share 업데이트", "Simple Share Update"), fmt.Sprintf(updateText(lang, "업데이트 적용에 실패했습니다.\n\n%v", "Failed to apply the update.\n\n%v"), err), walk.MsgBoxIconError)
 		}
 		os.Exit(0)
 	}
 }
 
-func runApplyUpdate(targetPath, newExePath string) error {
+func runApplyUpdate(targetPath, newExePath, oldVersion, newVersion, lang string) error {
 	time.Sleep(700 * time.Millisecond)
 	backup := targetPath + ".update-backup"
 	_ = os.Remove(backup)
@@ -35,8 +43,10 @@ func runApplyUpdate(targetPath, newExePath string) error {
 			return err
 		}
 		_ = os.Remove(backup)
-		if err := exec.Command(targetPath).Start(); err != nil {
-			return err
+		if err := runUpdateCompleteCountdown(targetPath, oldVersion, newVersion, lang); err != nil {
+			if startErr := exec.Command(targetPath).Start(); startErr != nil {
+				return fmt.Errorf("update completed but restart failed: %w", startErr)
+			}
 		}
 		return nil
 	}
