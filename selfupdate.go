@@ -27,7 +27,20 @@ func init() {
 	}
 }
 
-func runApplyUpdate(targetPath, newExePath, oldVersion, newVersion, lang string) error {
+func runApplyUpdate(targetPath, newExePath string, extra ...string) error {
+	oldVersion := ""
+	newVersion := Version
+	lang := "ko"
+	if len(extra) > 0 {
+		oldVersion = extra[0]
+	}
+	if len(extra) > 1 {
+		newVersion = extra[1]
+	}
+	if len(extra) > 2 {
+		lang = extra[2]
+	}
+
 	time.Sleep(700 * time.Millisecond)
 	backup := targetPath + ".update-backup"
 	_ = os.Remove(backup)
@@ -43,6 +56,9 @@ func runApplyUpdate(targetPath, newExePath, oldVersion, newVersion, lang string)
 			return err
 		}
 		_ = os.Remove(backup)
+		if oldVersion == "" {
+			return exec.Command(targetPath).Start()
+		}
 		if err := runUpdateCompleteCountdown(targetPath, oldVersion, newVersion, lang); err != nil {
 			if startErr := exec.Command(targetPath).Start(); startErr != nil {
 				return fmt.Errorf("update completed but restart failed: %w", startErr)
